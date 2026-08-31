@@ -1,4 +1,10 @@
+import sys
 import os
+
+BASE_DIR = os.path.abspath(os.path.dirname(__file__))
+if BASE_DIR not in sys.path:
+    sys.path.insert(0, BASE_DIR)
+
 from app import create_app
 
 app = create_app()

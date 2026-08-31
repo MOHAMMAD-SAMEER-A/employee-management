@@ -6,7 +6,8 @@ requires-python = ">=3.10"
 dependencies = [
     "Flask==3.0.3",
     "Flask-Bcrypt==1.0.1",
-    "python-dotenv==1.0.1"
+    "python-dotenv==1.0.1",
+    "bcrypt>=4.0.0"
 ]
 
 [tool.vercel]
