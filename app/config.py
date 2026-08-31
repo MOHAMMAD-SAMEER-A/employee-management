@@ -5,11 +5,25 @@ from dotenv import load_dotenv
 BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / '.env')
 
+def get_database_path():
+    """Determine database path safely handling local and read-only serverless environments."""
+    if os.environ.get('DATABASE_PATH'):
+        return os.environ.get('DATABASE_PATH')
+    
+    # Serverless runtime indicators (Vercel, AWS Lambda)
+    if os.environ.get('VERCEL') or os.environ.get('AWS_LAMBDA_FUNCTION_NAME') or os.environ.get('LAMBDA_TASK_ROOT'):
+        return '/tmp/app.db'
+    
+    try:
+        inst_dir = BASE_DIR / 'instance'
+        inst_dir.mkdir(parents=True, exist_ok=True)
+        return str(inst_dir / 'app.db')
+    except (OSError, PermissionError):
+        return '/tmp/app.db'
+
 class Config:
     SECRET_KEY = os.environ.get('SECRET_KEY', 'enterprise-super-secret-key-3dd0d6d8')
-    is_vercel = os.environ.get('VERCEL') == '1'
-    default_db = '/tmp/app.db' if is_vercel else str(BASE_DIR / 'instance' / 'app.db')
-    DATABASE = os.environ.get('DATABASE_PATH', default_db)
+    DATABASE = get_database_path()
     
     # Secure Session Settings
     SESSION_COOKIE_HTTPONLY = True

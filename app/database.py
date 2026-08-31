@@ -8,8 +8,12 @@ def get_db():
     """Obtain a thread-local SQLite connection with row_factory and foreign keys enabled."""
     if 'db' not in g:
         db_path = current_app.config['DATABASE']
-        # Ensure instance directory exists
-        os.makedirs(os.path.dirname(os.path.abspath(db_path)), exist_ok=True)
+        db_dir = os.path.dirname(os.path.abspath(db_path))
+        if db_dir:
+            try:
+                os.makedirs(db_dir, exist_ok=True)
+            except (OSError, PermissionError):
+                pass
         
         g.db = sqlite3.connect(db_path)
         g.db.row_factory = sqlite3.Row

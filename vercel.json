@@ -1,15 +1,8 @@
 {
-  "framework": null,
-  "builds": [
+  "rewrites": [
     {
-      "src": "run.py",
-      "use": "@vercel/python"
-    }
-  ],
-  "routes": [
-    {
-      "src": "/(.*)",
-      "dest": "run.py"
+      "source": "/(.*)",
+      "destination": "/api/index"
     }
   ]
 }

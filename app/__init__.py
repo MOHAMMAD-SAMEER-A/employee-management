@@ -8,11 +8,15 @@ from app.routes.employee_routes import employee_bp
 
 def create_app(config_class=Config):
     """Application factory for Employee Management & Task Allocation Web Application."""
-    app = Flask(__name__, instance_relative_config=True)
+    app = Flask(__name__)
     app.config.from_object(config_class)
 
-    # Ensure instance folder exists
-    os.makedirs(app.instance_path, exist_ok=True)
+    # Safely ensure instance folder exists if writable
+    try:
+        if app.instance_path:
+            os.makedirs(app.instance_path, exist_ok=True)
+    except (OSError, PermissionError):
+        pass
 
     # Initialize Database & Seeding
     init_db(app)
