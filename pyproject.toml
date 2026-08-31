@@ -8,3 +8,6 @@ dependencies = [
     "Flask-Bcrypt==1.0.1",
     "python-dotenv==1.0.1"
 ]
+
+[tool.vercel]
+entrypoint = "app.py"
