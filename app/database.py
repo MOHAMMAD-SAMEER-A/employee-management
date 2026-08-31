@@ -15,7 +15,7 @@ def get_db():
             except (OSError, PermissionError):
                 pass
         
-        g.db = sqlite3.connect(db_path)
+        g.db = sqlite3.connect(db_path, check_same_thread=False)
         g.db.row_factory = sqlite3.Row
         g.db.execute('PRAGMA foreign_keys = ON;')
     return g.db
@@ -24,65 +24,71 @@ def close_db(e=None):
     """Close the SQLite database connection if it exists."""
     db = g.pop('db', None)
     if db is not None:
-        db.close()
+        try:
+            db.close()
+        except Exception:
+            pass
 
 def init_db(app):
     """Initialize database tables, apply schema updates, and run automatic seeding."""
-    with app.app_context():
-        db = get_db()
-        
-        # Create users table
-        db.execute('''
-            CREATE TABLE IF NOT EXISTS users (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                username TEXT UNIQUE NOT NULL,
-                password_hash TEXT NOT NULL,
-                role TEXT CHECK(role IN ('admin', 'employee')) NOT NULL DEFAULT 'employee',
-                full_name TEXT NOT NULL,
-                email TEXT UNIQUE NOT NULL,
-                phone TEXT NOT NULL,
-                salary REAL NOT NULL DEFAULT 0.00,
-                payslip_status TEXT CHECK(payslip_status IN ('Paid', 'Unpaid')) NOT NULL DEFAULT 'Unpaid',
-                is_active INTEGER DEFAULT 1,
-                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-            );
-        ''')
-        
-        # Create tasks table (with Blocked status and created_by reference)
-        db.execute('''
-            CREATE TABLE IF NOT EXISTS tasks (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                employee_id INTEGER NOT NULL,
-                created_by INTEGER DEFAULT 1,
-                task_title TEXT NOT NULL,
-                description TEXT,
-                priority TEXT CHECK(priority IN ('Low', 'Medium', 'High', 'Urgent')) DEFAULT 'Medium',
-                status TEXT CHECK(status IN ('Pending', 'Ongoing', 'Completed', 'Blocked')) DEFAULT 'Pending',
-                assigned_date DATE DEFAULT (DATE('now')),
-                due_date DATE,
-                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (employee_id) REFERENCES users (id) ON DELETE CASCADE,
-                FOREIGN KEY (created_by) REFERENCES users (id) ON DELETE SET NULL
-            );
-        ''')
-        db.commit()
+    try:
+        with app.app_context():
+            db = get_db()
+            
+            # Create users table
+            db.execute('''
+                CREATE TABLE IF NOT EXISTS users (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    username TEXT UNIQUE NOT NULL,
+                    password_hash TEXT NOT NULL,
+                    role TEXT CHECK(role IN ('admin', 'employee')) NOT NULL DEFAULT 'employee',
+                    full_name TEXT NOT NULL,
+                    email TEXT UNIQUE NOT NULL,
+                    phone TEXT NOT NULL,
+                    salary REAL NOT NULL DEFAULT 0.00,
+                    payslip_status TEXT CHECK(payslip_status IN ('Paid', 'Unpaid')) NOT NULL DEFAULT 'Unpaid',
+                    is_active INTEGER DEFAULT 1,
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                );
+            ''')
+            
+            # Create tasks table (with Blocked status and created_by reference)
+            db.execute('''
+                CREATE TABLE IF NOT EXISTS tasks (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    employee_id INTEGER NOT NULL,
+                    created_by INTEGER DEFAULT 1,
+                    task_title TEXT NOT NULL,
+                    description TEXT,
+                    priority TEXT CHECK(priority IN ('Low', 'Medium', 'High', 'Urgent')) DEFAULT 'Medium',
+                    status TEXT CHECK(status IN ('Pending', 'Ongoing', 'Completed', 'Blocked')) DEFAULT 'Pending',
+                    assigned_date DATE DEFAULT (DATE('now')),
+                    due_date DATE,
+                    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (employee_id) REFERENCES users (id) ON DELETE CASCADE,
+                    FOREIGN KEY (created_by) REFERENCES users (id) ON DELETE SET NULL
+                );
+            ''')
+            db.commit()
 
-        # Check and migrate columns if needed for existing DBs
-        try:
-            cursor = db.execute("PRAGMA table_info(tasks);")
-            columns = [row['name'] for row in cursor.fetchall()]
-            if 'created_by' not in columns:
-                db.execute("ALTER TABLE tasks ADD COLUMN created_by INTEGER REFERENCES users (id) ON DELETE SET NULL;")
-                db.commit()
-        except Exception:
-            pass
-        
-        # Auto-seed initial records if users table is empty
-        cursor = db.execute('SELECT COUNT(*) as count FROM users;')
-        user_count = cursor.fetchone()['count']
-        
-        if user_count == 0:
-            seed_initial_data(db)
+            # Check and migrate columns if needed for existing DBs
+            try:
+                cursor = db.execute("PRAGMA table_info(tasks);")
+                columns = [row['name'] for row in cursor.fetchall()]
+                if 'created_by' not in columns:
+                    db.execute("ALTER TABLE tasks ADD COLUMN created_by INTEGER REFERENCES users (id) ON DELETE SET NULL;")
+                    db.commit()
+            except Exception:
+                pass
+            
+            # Auto-seed initial records if users table is empty
+            cursor = db.execute('SELECT COUNT(*) as count FROM users;')
+            user_count = cursor.fetchone()['count']
+            
+            if user_count == 0:
+                seed_initial_data(db)
+    except Exception as err:
+        print(f"Warning: Database initialization exception caught: {err}")
 
 def seed_initial_data(db):
     """Seed default administrative credentials, sample employee accounts, and initial tasks."""
