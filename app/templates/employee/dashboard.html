@@ -1,0 +1,161 @@
+{% extends "base.html" %}
+
+{% block title %}Enterprise Core | Staff Workspace{% endblock %}
+
+{% block content %}
+<div class="space-y-8">
+    
+    <!-- Profile & Compensation Overview Header Card -->
+    <div class="glass-panel rounded-3xl p-6 sm:p-8 border border-slate-800 shadow-2xl relative overflow-hidden">
+        <div class="absolute -top-24 -right-24 w-64 h-64 bg-indigo-600/10 rounded-full blur-3xl pointer-events-none"></div>
+        
+        <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6 relative">
+            <!-- User Info Block -->
+            <div class="flex items-start sm:items-center gap-4">
+                <div id="emp-avatar-initials" class="w-16 h-16 rounded-2xl bg-gradient-to-tr from-indigo-600 via-indigo-500 to-purple-600 flex items-center justify-center text-white font-extrabold text-xl shadow-xl shadow-indigo-600/30 border border-indigo-400/30 shrink-0">
+                    --
+                </div>
+                <div>
+                    <div class="flex flex-wrap items-center gap-2">
+                        <h1 id="emp-full-name" class="text-2xl sm:text-3xl font-extrabold text-slate-100 tracking-tight">Loading Profile...</h1>
+                        <span id="emp-username-tag" class="text-xs font-mono text-indigo-400 bg-indigo-500/10 border border-indigo-500/30 px-2 py-0.5 rounded-full">@staff</span>
+                    </div>
+                    
+                    <div class="flex flex-wrap items-center gap-y-1 gap-x-4 mt-2 text-xs text-slate-400">
+                        <span class="flex items-center gap-1.5">
+                            <i data-lucide="mail" class="w-3.5 h-3.5 text-slate-500"></i>
+                            <span id="emp-email">--</span>
+                        </span>
+                        <span class="flex items-center gap-1.5">
+                            <i data-lucide="phone" class="w-3.5 h-3.5 text-slate-500"></i>
+                            <span id="emp-phone">--</span>
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Compensation & Payslip Status Pill -->
+            <div class="flex flex-col sm:flex-row items-start sm:items-center gap-4 bg-slate-900/80 border border-slate-800 p-4 rounded-2xl">
+                <div>
+                    <div class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Monthly Base Compensation</div>
+                    <div id="emp-salary" class="text-xl font-extrabold text-slate-100 font-mono mt-0.5">$0.00</div>
+                </div>
+                <div class="sm:border-l sm:border-slate-800 sm:pl-4">
+                    <div class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Payroll Cycle Status</div>
+                    <div id="emp-payslip-badge" class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border bg-slate-800 text-slate-400 border-slate-700">
+                        <span class="w-2 h-2 rounded-full bg-slate-500"></span> Checking status...
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Personal Productivity & Task Velocity Cards -->
+    <div class="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
+        <!-- Total Tasks -->
+        <div class="glass-card rounded-2xl p-4">
+            <div class="flex items-center justify-between">
+                <span class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Total</span>
+                <i data-lucide="layers" class="w-4 h-4 text-indigo-400"></i>
+            </div>
+            <div id="emp-metric-total" class="text-xl font-extrabold text-slate-100 font-mono mt-1.5">0</div>
+        </div>
+
+        <!-- Ongoing Tasks -->
+        <div class="glass-card rounded-2xl p-4">
+            <div class="flex items-center justify-between">
+                <span class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Ongoing</span>
+                <i data-lucide="zap" class="w-4 h-4 text-amber-400"></i>
+            </div>
+            <div id="emp-metric-ongoing" class="text-xl font-extrabold text-amber-300 font-mono mt-1.5">0</div>
+        </div>
+
+        <!-- Blocked Tasks -->
+        <div class="glass-card rounded-2xl p-4 border border-rose-500/30 bg-rose-950/10">
+            <div class="flex items-center justify-between">
+                <span class="text-[11px] font-semibold text-rose-400 uppercase tracking-wider">Blocked</span>
+                <i data-lucide="alert-triangle" class="w-4 h-4 text-rose-400"></i>
+            </div>
+            <div id="emp-metric-blocked" class="text-xl font-extrabold text-rose-400 font-mono mt-1.5">0</div>
+        </div>
+
+        <!-- Completed Tasks -->
+        <div class="glass-card rounded-2xl p-4">
+            <div class="flex items-center justify-between">
+                <span class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Done</span>
+                <i data-lucide="check-circle" class="w-4 h-4 text-emerald-400"></i>
+            </div>
+            <div id="emp-metric-completed" class="text-xl font-extrabold text-emerald-400 font-mono mt-1.5">0</div>
+        </div>
+
+        <!-- Completion Percentage -->
+        <div class="glass-card rounded-2xl p-4 col-span-2 lg:col-span-1">
+            <div class="flex items-center justify-between">
+                <span class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Resolved</span>
+                <span id="emp-completion-rate" class="text-xs font-bold text-indigo-400 font-mono">0%</span>
+            </div>
+            <div class="w-full bg-slate-800 h-2 rounded-full mt-2.5 overflow-hidden">
+                <div id="emp-completion-bar" class="bg-gradient-to-r from-indigo-500 to-emerald-400 h-full rounded-full transition-all duration-500" style="width: 0%"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Assigned Tasks Workspace -->
+    <div class="space-y-4">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+                <h2 class="text-xl font-bold text-slate-100 tracking-tight">Active Work Orders & Tasks</h2>
+                <p class="text-xs text-slate-400">Update your task statuses to keep enterprise workflow synchronized in real time.</p>
+            </div>
+
+            <!-- Search & Filters -->
+            <div class="flex flex-wrap items-center gap-3">
+                <div class="relative w-full sm:w-64">
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-500">
+                        <i data-lucide="search" class="w-3.5 h-3.5"></i>
+                    </div>
+                    <input 
+                        id="my-task-search" 
+                        type="text" 
+                        placeholder="Search my tasks..."
+                        class="w-full pl-9 pr-3 py-1.5 bg-slate-900 border border-slate-700/80 rounded-xl text-slate-200 placeholder-slate-500 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
+                    >
+                </div>
+
+                <select 
+                    id="my-task-status-filter" 
+                    class="bg-slate-900 border border-slate-700 rounded-xl px-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer">
+                    <option value="all">All Statuses</option>
+                    <option value="Ongoing">Ongoing</option>
+                    <option value="Blocked">🚨 Blocked</option>
+                    <option value="Pending">Pending</option>
+                    <option value="Completed">Completed</option>
+                </select>
+
+                <select 
+                    id="my-task-priority-filter" 
+                    class="bg-slate-900 border border-slate-700 rounded-xl px-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer">
+                    <option value="all">All Priorities</option>
+                    <option value="Urgent">Urgent</option>
+                    <option value="High">High</option>
+                    <option value="Medium">Medium</option>
+                    <option value="Low">Low</option>
+                </select>
+
+                <span id="my-tasks-count" class="px-2.5 py-1 text-xs font-semibold rounded-lg bg-slate-800 text-slate-300 border border-slate-700 whitespace-nowrap">
+                    0 Assigned Tasks
+                </span>
+            </div>
+        </div>
+
+        <!-- Task Cards Grid -->
+        <div id="my-tasks-container" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <!-- Rendered dynamically by employee.js -->
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/employee.js') }}"></script>
+{% endblock %}

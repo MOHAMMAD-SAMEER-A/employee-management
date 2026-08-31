@@ -1,0 +1,3 @@
+Flask==3.0.3
+Flask-Bcrypt==1.0.1
+python-dotenv==1.0.1

@@ -1,0 +1,394 @@
+{% extends "base.html" %}
+
+{% block title %}Enterprise Core | Executive Administration{% endblock %}
+
+{% block content %}
+<div class="space-y-8">
+    
+    <!-- Top Action Bar -->
+    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div>
+            <div class="flex items-center gap-2">
+                <h1 class="text-2xl sm:text-3xl font-extrabold text-slate-100 tracking-tight">Executive Dashboard</h1>
+                <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-indigo-500/10 text-indigo-400 border border-indigo-500/30">Admin Console</span>
+            </div>
+            <p class="text-sm text-slate-400 mt-1">Real-time organizational performance, payroll management, and task allocation matrix.</p>
+        </div>
+
+        <div class="flex items-center gap-3">
+            <button 
+                type="button" 
+                onclick="openModal('add-employee-modal')" 
+                class="px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-850 text-slate-200 hover:text-white border border-slate-700 hover:border-slate-600 text-sm font-semibold shadow-md transition-all flex items-center gap-2">
+                <i data-lucide="user-plus" class="w-4 h-4 text-indigo-400"></i>
+                <span>Add Staff</span>
+            </button>
+
+            <button 
+                type="button" 
+                onclick="openModal('create-task-modal')" 
+                class="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold shadow-lg shadow-indigo-600/30 hover:shadow-indigo-600/50 transition-all flex items-center gap-2 glow-indigo">
+                <i data-lucide="plus-circle" class="w-4 h-4"></i>
+                <span>Dispatch Task</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- 4 KPI Metrics Grid -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+        <!-- Metric 1: Total Payroll -->
+        <div class="glass-card rounded-2xl p-5 relative overflow-hidden">
+            <div class="flex items-center justify-between">
+                <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Total Monthly Payroll</span>
+                <div class="w-9 h-9 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+                    <i data-lucide="dollar-sign" class="w-5 h-5"></i>
+                </div>
+            </div>
+            <div class="mt-3">
+                <div id="metric-total-payroll" class="text-2xl font-extrabold text-slate-100 font-mono">$0.00</div>
+                <div id="metric-paid-breakdown" class="text-[11px] text-slate-400 mt-1 truncate">Calculating disbursements...</div>
+            </div>
+        </div>
+
+        <!-- Metric 2: Active Staff -->
+        <div class="glass-card rounded-2xl p-5 relative overflow-hidden">
+            <div class="flex items-center justify-between">
+                <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Active Staff Roster</span>
+                <div class="w-9 h-9 rounded-xl bg-indigo-500/10 border border-indigo-500/30 flex items-center justify-center text-indigo-400">
+                    <i data-lucide="users" class="w-5 h-5"></i>
+                </div>
+            </div>
+            <div class="mt-3">
+                <div id="metric-active-staff" class="text-2xl font-extrabold text-slate-100 font-mono">0</div>
+                <div class="text-[11px] text-emerald-400 mt-1 flex items-center gap-1 font-medium">
+                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span> 100% verified active status
+                </div>
+            </div>
+        </div>
+
+        <!-- Metric 3: Task Completion Rate -->
+        <div class="glass-card rounded-2xl p-5 relative overflow-hidden">
+            <div class="flex items-center justify-between">
+                <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Completion Velocity</span>
+                <div class="w-9 h-9 rounded-xl bg-violet-500/10 border border-violet-500/30 flex items-center justify-center text-violet-400">
+                    <i data-lucide="check-circle-2" class="w-5 h-5"></i>
+                </div>
+            </div>
+            <div class="mt-3">
+                <div class="flex items-baseline justify-between">
+                    <div id="metric-completion-rate" class="text-2xl font-extrabold text-slate-100 font-mono">0%</div>
+                    <span id="metric-task-counts" class="text-[11px] text-slate-400 font-mono">0 / 0</span>
+                </div>
+                <div class="w-full bg-slate-800 h-2 rounded-full mt-2 overflow-hidden">
+                    <div id="metric-completion-bar" class="bg-gradient-to-r from-indigo-500 to-emerald-400 h-full rounded-full transition-all duration-500" style="width: 0%"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Metric 4: Pending & Urgent Tasks -->
+        <div class="glass-card rounded-2xl p-5 relative overflow-hidden">
+            <div class="flex items-center justify-between">
+                <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Open Backlog</span>
+                <div class="w-9 h-9 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400">
+                    <i data-lucide="clock" class="w-5 h-5"></i>
+                </div>
+            </div>
+            <div class="mt-3">
+                <div id="metric-pending-tasks" class="text-2xl font-extrabold text-slate-100 font-mono">0</div>
+                <div id="metric-urgent-tasks" class="text-[11px] text-rose-400 mt-1 truncate">0 urgent tasks</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Navigation Tab Bar -->
+    <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+        <div class="flex items-center gap-2">
+            <button 
+                id="tab-employees-btn"
+                type="button" 
+                class="px-4 py-2 text-sm font-semibold rounded-lg bg-indigo-600 text-white shadow-md shadow-indigo-600/30 transition-all flex items-center gap-2">
+                <i data-lucide="users" class="w-4 h-4"></i>
+                <span>Staff Directory</span>
+            </button>
+            <button 
+                id="tab-tasks-btn"
+                type="button" 
+                class="px-4 py-2 text-sm font-medium rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition-all flex items-center gap-2">
+                <i data-lucide="check-square" class="w-4 h-4"></i>
+                <span>Task Allocations</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- SECTION 1: EMPLOYEES DIRECTORY -->
+    <div id="employees-section" class="space-y-4">
+        <!-- Search and Filter controls -->
+        <div class="glass-card rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div class="relative w-full sm:w-96">
+                <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
+                    <i data-lucide="search" class="w-4 h-4"></i>
+                </div>
+                <input 
+                    id="employee-search" 
+                    type="text" 
+                    placeholder="Search staff by name, email, @username..."
+                    class="w-full pl-10 pr-4 py-2 bg-slate-900 border border-slate-700/80 rounded-xl text-slate-200 placeholder-slate-500 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
+                >
+            </div>
+
+            <div class="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end">
+                <div class="flex items-center gap-2">
+                    <label for="employee-status-filter" class="text-xs text-slate-400 font-medium whitespace-nowrap">Payroll Status:</label>
+                    <select 
+                        id="employee-status-filter" 
+                        class="bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer">
+                        <option value="all">All Records</option>
+                        <option value="Paid">Paid</option>
+                        <option value="Unpaid">Unpaid</option>
+                    </select>
+                </div>
+
+                <span id="employees-count-badge" class="px-2.5 py-1 text-xs font-semibold rounded-lg bg-slate-800 text-slate-300 border border-slate-700 whitespace-nowrap">
+                    0 Staff Members
+                </span>
+            </div>
+        </div>
+
+        <!-- Employees Table -->
+        <div class="glass-panel rounded-2xl border border-slate-800 overflow-hidden shadow-xl">
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="border-b border-slate-800 bg-slate-900/60 text-slate-400 text-[11px] font-semibold uppercase tracking-wider">
+                            <th class="py-3.5 px-4">Employee Profile</th>
+                            <th class="py-3.5 px-4">Contact Info</th>
+                            <th class="py-3.5 px-4">Monthly Salary</th>
+                            <th class="py-3.5 px-4">Payslip Status</th>
+                            <th class="py-3.5 px-4">Assigned Tasks</th>
+                            <th class="py-3.5 px-4 text-right">Quick Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="employees-table-body" class="divide-y divide-slate-800/60">
+                        <!-- Rendered by admin.js -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- SECTION 2: TASK ALLOCATIONS -->
+    <div id="tasks-section" class="space-y-4 hidden">
+        <!-- Search and Filter controls -->
+        <div class="glass-card rounded-2xl p-4 flex flex-col md:flex-row items-center justify-between gap-4">
+            <div class="relative w-full md:w-80">
+                <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
+                    <i data-lucide="search" class="w-4 h-4"></i>
+                </div>
+                <input 
+                    id="task-search" 
+                    type="text" 
+                    placeholder="Search tasks, descriptions, assignees..."
+                    class="w-full pl-10 pr-4 py-2 bg-slate-900 border border-slate-700/80 rounded-xl text-slate-200 placeholder-slate-500 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
+                >
+            </div>
+
+            <div class="flex flex-wrap items-center gap-3 w-full md:w-auto justify-between md:justify-end">
+                <div class="flex items-center gap-2">
+                    <label for="task-priority-filter" class="text-xs text-slate-400 font-medium">Priority:</label>
+                    <select 
+                        id="task-priority-filter" 
+                        class="bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer">
+                        <option value="all">All Priorities</option>
+                        <option value="Urgent">Urgent</option>
+                        <option value="High">High</option>
+                        <option value="Medium">Medium</option>
+                        <option value="Low">Low</option>
+                    </select>
+                </div>
+
+                <div class="flex items-center gap-2">
+                    <label for="task-status-filter" class="text-xs text-slate-400 font-medium">Status:</label>
+                    <select 
+                        id="task-status-filter" 
+                        class="bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer">
+                        <option value="all">All Statuses</option>
+                        <option value="Pending">Pending</option>
+                        <option value="Ongoing">Ongoing</option>
+                        <option value="Blocked">Blocked (Roadblock)</option>
+                        <option value="Completed">Completed</option>
+                    </select>
+                </div>
+
+                <span id="tasks-count-badge" class="px-2.5 py-1 text-xs font-semibold rounded-lg bg-slate-800 text-slate-300 border border-slate-700 whitespace-nowrap">
+                    0 Allocated Tasks
+                </span>
+            </div>
+        </div>
+
+        <!-- Tasks Table -->
+        <div class="glass-panel rounded-2xl border border-slate-800 overflow-hidden shadow-xl">
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="border-b border-slate-800 bg-slate-900/60 text-slate-400 text-[11px] font-semibold uppercase tracking-wider">
+                            <th class="py-3.5 px-4">Task Title & Details</th>
+                            <th class="py-3.5 px-4">Assignee</th>
+                            <th class="py-3.5 px-4">Priority</th>
+                            <th class="py-3.5 px-4">Status</th>
+                            <th class="py-3.5 px-4">Target Due Date</th>
+                            <th class="py-3.5 px-4 text-right">Assigned Date</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tasks-table-body" class="divide-y divide-slate-800/60">
+                        <!-- Rendered by admin.js -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ================= MODALS ================= -->
+
+<!-- 1. ADD EMPLOYEE MODAL -->
+<div id="add-employee-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 modal-backdrop modal-hidden">
+    <div class="glass-panel max-w-lg w-full rounded-3xl p-6 sm:p-8 border border-slate-700 shadow-2xl modal-content relative">
+        <div class="flex items-center justify-between pb-4 border-b border-slate-800 mb-5">
+            <div class="flex items-center gap-2.5">
+                <div class="w-8 h-8 rounded-xl bg-indigo-600/20 border border-indigo-500/30 flex items-center justify-center text-indigo-400">
+                    <i data-lucide="user-plus" class="w-4 h-4"></i>
+                </div>
+                <div>
+                    <h3 class="text-base font-bold text-slate-100">Register New Staff Member</h3>
+                    <p class="text-xs text-slate-400">Create employee credentials and salary allocation.</p>
+                </div>
+            </div>
+            <button type="button" onclick="closeModal('add-employee-modal')" class="p-1 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition-colors">
+                <i data-lucide="x" class="w-5 h-5"></i>
+            </button>
+        </div>
+
+        <form id="add-employee-form" class="space-y-4">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                    <label for="emp-fullname-input" class="block text-xs font-semibold text-slate-300 mb-1.5">Full Name *</label>
+                    <input id="emp-fullname-input" name="full_name" type="text" required placeholder="e.g. Alex Morgan" class="w-full px-3.5 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-slate-100 placeholder-slate-500 text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                </div>
+                <div>
+                    <label for="emp-username-input" class="block text-xs font-semibold text-slate-300 mb-1.5">Username *</label>
+                    <input id="emp-username-input" name="username" type="text" required placeholder="e.g. alex.morgan" class="w-full px-3.5 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-slate-100 placeholder-slate-500 text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                    <label for="emp-email-input" class="block text-xs font-semibold text-slate-300 mb-1.5">Email Address *</label>
+                    <input id="emp-email-input" name="email" type="email" required placeholder="alex.m@enterprise.internal" class="w-full px-3.5 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-slate-100 placeholder-slate-500 text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                </div>
+                <div>
+                    <label for="emp-phone-input" class="block text-xs font-semibold text-slate-300 mb-1.5">Phone Number *</label>
+                    <input id="emp-phone-input" name="phone" type="tel" required placeholder="+1 (555) 000-0000" class="w-full px-3.5 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-slate-100 placeholder-slate-500 text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                    <label for="emp-password-input" class="block text-xs font-semibold text-slate-300 mb-1.5">Initial Password *</label>
+                    <input id="emp-password-input" name="password" type="password" required placeholder="••••••••" class="w-full px-3.5 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-slate-100 placeholder-slate-500 text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                </div>
+                <div>
+                    <label for="emp-salary-input" class="block text-xs font-semibold text-slate-300 mb-1.5">Monthly Salary ($ USD) *</label>
+                    <input id="emp-salary-input" name="salary" type="number" step="0.01" min="0" required placeholder="75000.00" class="w-full px-3.5 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-slate-100 placeholder-slate-500 text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none font-mono">
+                </div>
+            </div>
+
+            <div>
+                <label for="emp-payroll-status-select" class="block text-xs font-semibold text-slate-300 mb-1.5">Initial Payslip Status</label>
+                <select id="emp-payroll-status-select" name="payslip_status" class="w-full px-3.5 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-slate-100 text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                    <option value="Unpaid">Unpaid (Pending cycle)</option>
+                    <option value="Paid">Paid</option>
+                </select>
+            </div>
+
+            <div class="pt-4 flex items-center justify-end gap-3 border-t border-slate-800">
+                <button type="button" onclick="closeModal('add-employee-modal')" class="px-4 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition-all">
+                    Cancel
+                </button>
+                <button type="submit" class="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shadow-lg shadow-indigo-600/30 transition-all flex items-center gap-1.5">
+                    <i data-lucide="user-plus" class="w-4 h-4"></i>
+                    <span>Register Employee</span>
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- 2. CREATE / DISPATCH TASK MODAL -->
+<div id="create-task-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 modal-backdrop modal-hidden">
+    <div class="glass-panel max-w-lg w-full rounded-3xl p-6 sm:p-8 border border-slate-700 shadow-2xl modal-content relative">
+        <div class="flex items-center justify-between pb-4 border-b border-slate-800 mb-5">
+            <div class="flex items-center gap-2.5">
+                <div class="w-8 h-8 rounded-xl bg-indigo-600/20 border border-indigo-500/30 flex items-center justify-center text-indigo-400">
+                    <i data-lucide="plus-circle" class="w-4 h-4"></i>
+                </div>
+                <div>
+                    <h3 class="text-base font-bold text-slate-100">Dispatch Work Order</h3>
+                    <p class="text-xs text-slate-400">Allocate a priority task to a staff member.</p>
+                </div>
+            </div>
+            <button type="button" onclick="closeModal('create-task-modal')" class="p-1 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition-colors">
+                <i data-lucide="x" class="w-5 h-5"></i>
+            </button>
+        </div>
+
+        <form id="create-task-form" class="space-y-4">
+            <div>
+                <label for="task-employee-id" class="block text-xs font-semibold text-slate-300 mb-1.5">Assignee Staff Member *</label>
+                <select id="task-employee-id" name="employee_id" required class="w-full px-3.5 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-slate-100 text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                    <!-- Populated dynamically by admin.js -->
+                </select>
+            </div>
+
+            <div>
+                <label for="task-title-input" class="block text-xs font-semibold text-slate-300 mb-1.5">Task Title *</label>
+                <input id="task-title-input" name="task_title" type="text" required placeholder="e.g. Audit Payment Gateway Integration" class="w-full px-3.5 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-slate-100 placeholder-slate-500 text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+            </div>
+
+            <div>
+                <label for="task-description-input" class="block text-xs font-semibold text-slate-300 mb-1.5">Task Scope & Instructions</label>
+                <textarea id="task-description-input" name="description" rows="3" placeholder="Provide detailed steps, dependencies, and requirements..." class="w-full px-3.5 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-slate-100 placeholder-slate-500 text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none"></textarea>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                    <label for="task-priority-select" class="block text-xs font-semibold text-slate-300 mb-1.5">Priority Level</label>
+                    <select id="task-priority-select" name="priority" class="w-full px-3.5 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-slate-100 text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                        <option value="Medium" selected>Medium Priority</option>
+                        <option value="Low">Low Priority</option>
+                        <option value="High">High Priority</option>
+                        <option value="Urgent">Urgent (Critical)</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="task-due-date-input" class="block text-xs font-semibold text-slate-300 mb-1.5">Target Due Date</label>
+                    <input id="task-due-date-input" name="due_date" type="date" class="w-full px-3.5 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-slate-100 text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none font-mono">
+                </div>
+            </div>
+
+            <div class="pt-4 flex items-center justify-end gap-3 border-t border-slate-800">
+                <button type="button" onclick="closeModal('create-task-modal')" class="px-4 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition-all">
+                    Cancel
+                </button>
+                <button type="submit" class="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shadow-lg shadow-indigo-600/30 transition-all flex items-center gap-1.5">
+                    <i data-lucide="send" class="w-4 h-4"></i>
+                    <span>Dispatch Task</span>
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/admin.js') }}"></script>
+{% endblock %}
