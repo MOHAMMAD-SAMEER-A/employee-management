@@ -7,7 +7,9 @@ load_dotenv(BASE_DIR / '.env')
 
 class Config:
     SECRET_KEY = os.environ.get('SECRET_KEY', 'enterprise-super-secret-key-3dd0d6d8')
-    DATABASE = os.environ.get('DATABASE_PATH', str(BASE_DIR / 'instance' / 'app.db'))
+    is_vercel = os.environ.get('VERCEL') == '1'
+    default_db = '/tmp/app.db' if is_vercel else str(BASE_DIR / 'instance' / 'app.db')
+    DATABASE = os.environ.get('DATABASE_PATH', default_db)
     
     # Secure Session Settings
     SESSION_COOKIE_HTTPONLY = True

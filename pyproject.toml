@@ -1,0 +1,12 @@
+[project]
+name = "employee-management"
+version = "1.0.0"
+description = "Employee Management and Task Allocation Web Application"
+dependencies = [
+    "Flask==3.0.3",
+    "Flask-Bcrypt==1.0.1",
+    "python-dotenv==1.0.1"
+]
+
+[tool.vercel]
+entrypoint = "run:app"
