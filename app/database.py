@@ -6,27 +6,58 @@ from werkzeug.security import generate_password_hash
 def get_db():
     if "db" not in g:
         db_path = current_app.config.get("DATABASE") or current_app.config.get("DATABASE_PATH") or "/tmp/app.db"
-        os.makedirs(os.path.dirname(os.path.abspath(db_path)), exist_ok=True)
-        g.db = sqlite3.connect(db_path, check_same_thread=False)
+        
+        # Ensure parent directory exists, fallback to /tmp/app.db if write protected
+        try:
+            os.makedirs(os.path.dirname(os.path.abspath(db_path)), exist_ok=True)
+        except Exception:
+            db_path = "/tmp/app.db"
+            os.makedirs("/tmp", exist_ok=True)
+
+        try:
+            g.db = sqlite3.connect(db_path, check_same_thread=False)
+        except Exception:
+            db_path = "/tmp/app.db"
+            os.makedirs("/tmp", exist_ok=True)
+            g.db = sqlite3.connect(db_path, check_same_thread=False)
+
         g.db.row_factory = sqlite3.Row
         g.db.execute("PRAGMA foreign_keys = ON;")
+        
+        # On-demand table check for cold starts
+        _ensure_tables_exist(g.db)
     return g.db
+
+def _ensure_tables_exist(db):
+    """Ensure database tables exist on demand during request handling."""
+    try:
+        cursor = db.execute("SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='users';")
+        if cursor.fetchone()[0] == 0:
+            _do_init_db(db)
+    except Exception as err:
+        print(f"Warning: Table auto-creation check exception: {err}")
 
 def close_db(e=None):
     db = g.pop("db", None)
     if db is not None:
-        db.close()
+        try:
+            db.close()
+        except Exception:
+            pass
 
 def init_db(app=None):
-    if app is not None:
-        with app.app_context():
-            _do_init_db()
-    else:
-        _do_init_db()
+    try:
+        if app is not None:
+            with app.app_context():
+                db = get_db()
+                _do_init_db(db)
+        else:
+            db = get_db()
+            _do_init_db(db)
+    except Exception as err:
+        print(f"Warning: Database initialization exception during setup: {err}")
 
-def _do_init_db():
-    db = get_db()
-    
+def _do_init_db(db):
     db.executescript("""
     CREATE TABLE IF NOT EXISTS departments (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
