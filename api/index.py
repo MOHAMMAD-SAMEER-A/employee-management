@@ -1,14 +1,13 @@
 import sys
 import os
+from pathlib import Path
 
-# Add root project directory to sys.path for Vercel serverless environment
-BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-if BASE_DIR not in sys.path:
-    sys.path.insert(0, BASE_DIR)
+# Add project root to sys.path
+BASE_DIR = Path(__file__).resolve().parent.parent
+if str(BASE_DIR) not in sys.path:
+    sys.path.insert(0, str(BASE_DIR))
 
 from app import create_app
 
-app = create_app()
-
-if __name__ == '__main__':
-    app.run()
+# Instantiate Flask WSGI application for Vercel
+app = create_app(os.getenv("FLASK_ENV", "production"))

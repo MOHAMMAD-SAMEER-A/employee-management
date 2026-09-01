@@ -1,6 +1,23 @@
 from flask import Blueprint, render_template, request, jsonify, session, redirect, url_for
-from flask_bcrypt import check_password_hash
+from werkzeug.security import check_password_hash as werkzeug_check
+from flask_bcrypt import check_password_hash as bcrypt_check
 from app.database import get_db
+
+def check_password(pw_hash, password):
+    if not pw_hash or not password:
+        return False
+    if isinstance(pw_hash, bytes):
+        pw_hash = pw_hash.decode('utf-8')
+    if pw_hash.startswith('$2'):
+        try:
+            return bcrypt_check(pw_hash, password)
+        except Exception:
+            pass
+    try:
+        return werkzeug_check(pw_hash, password)
+    except Exception:
+        pass
+    return False
 
 auth_bp = Blueprint('auth', __name__)
 
@@ -42,12 +59,17 @@ def api_login():
         (username,)
     ).fetchone()
 
-    if not user or not check_password_hash(user['password_hash'], password):
+    if not user or not check_password(user['password_hash'], password):
         return jsonify({
             'success': False,
             'message': 'Invalid username or password credentials.',
             'data': None
         }), 401
+
+    full_name = user['full_name'] if 'full_name' in user.keys() and user['full_name'] else None
+    if not full_name:
+        emp = db.execute('SELECT full_name FROM employees WHERE user_id = ?', (user['id'],)).fetchone()
+        full_name = emp['full_name'] if emp else user['username'].title()
 
     # Establish session
     session.clear()
@@ -55,18 +77,18 @@ def api_login():
     session['user_id'] = user['id']
     session['username'] = user['username']
     session['role'] = user['role']
-    session['full_name'] = user['full_name']
+    session['full_name'] = full_name
     session['email'] = user['email']
 
     redirect_url = url_for('admin.dashboard_view') if user['role'] == 'admin' else url_for('employee.dashboard_view')
 
     return jsonify({
         'success': True,
-        'message': f'Welcome back, {user["full_name"]}!',
+        'message': f'Welcome back, {full_name}!',
         'data': {
             'user_id': user['id'],
             'username': user['username'],
-            'full_name': user['full_name'],
+            'full_name': full_name,
             'role': user['role'],
             'redirect_url': redirect_url
         }

@@ -1,171 +1,142 @@
 import sqlite3
 import os
-from pathlib import Path
 from flask import g, current_app
-from flask_bcrypt import generate_password_hash
+from werkzeug.security import generate_password_hash
 
 def get_db():
-    """Obtain a thread-local SQLite connection with row_factory and foreign keys enabled."""
-    if 'db' not in g:
-        db_path = current_app.config['DATABASE']
-        db_dir = os.path.dirname(os.path.abspath(db_path))
-        if db_dir:
-            try:
-                os.makedirs(db_dir, exist_ok=True)
-            except (OSError, PermissionError):
-                pass
-        
+    if "db" not in g:
+        db_path = current_app.config.get("DATABASE") or current_app.config.get("DATABASE_PATH") or "/tmp/app.db"
+        os.makedirs(os.path.dirname(os.path.abspath(db_path)), exist_ok=True)
         g.db = sqlite3.connect(db_path, check_same_thread=False)
         g.db.row_factory = sqlite3.Row
-        g.db.execute('PRAGMA foreign_keys = ON;')
+        g.db.execute("PRAGMA foreign_keys = ON;")
     return g.db
 
 def close_db(e=None):
-    """Close the SQLite database connection if it exists."""
-    db = g.pop('db', None)
+    db = g.pop("db", None)
     if db is not None:
-        try:
-            db.close()
-        except Exception:
-            pass
+        db.close()
 
-def init_db(app):
-    """Initialize database tables, apply schema updates, and run automatic seeding."""
-    try:
+def init_db(app=None):
+    if app is not None:
         with app.app_context():
-            db = get_db()
-            
-            # Create users table
-            db.execute('''
-                CREATE TABLE IF NOT EXISTS users (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    username TEXT UNIQUE NOT NULL,
-                    password_hash TEXT NOT NULL,
-                    role TEXT CHECK(role IN ('admin', 'employee')) NOT NULL DEFAULT 'employee',
-                    full_name TEXT NOT NULL,
-                    email TEXT UNIQUE NOT NULL,
-                    phone TEXT NOT NULL,
-                    salary REAL NOT NULL DEFAULT 0.00,
-                    payslip_status TEXT CHECK(payslip_status IN ('Paid', 'Unpaid')) NOT NULL DEFAULT 'Unpaid',
-                    is_active INTEGER DEFAULT 1,
-                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-                );
-            ''')
-            
-            # Create tasks table (with Blocked status and created_by reference)
-            db.execute('''
-                CREATE TABLE IF NOT EXISTS tasks (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    employee_id INTEGER NOT NULL,
-                    created_by INTEGER DEFAULT 1,
-                    task_title TEXT NOT NULL,
-                    description TEXT,
-                    priority TEXT CHECK(priority IN ('Low', 'Medium', 'High', 'Urgent')) DEFAULT 'Medium',
-                    status TEXT CHECK(status IN ('Pending', 'Ongoing', 'Completed', 'Blocked')) DEFAULT 'Pending',
-                    assigned_date DATE DEFAULT (DATE('now')),
-                    due_date DATE,
-                    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                    FOREIGN KEY (employee_id) REFERENCES users (id) ON DELETE CASCADE,
-                    FOREIGN KEY (created_by) REFERENCES users (id) ON DELETE SET NULL
-                );
-            ''')
-            db.commit()
+            _do_init_db()
+    else:
+        _do_init_db()
 
-            # Check and migrate columns if needed for existing DBs
-            try:
-                cursor = db.execute("PRAGMA table_info(tasks);")
-                columns = [row['name'] for row in cursor.fetchall()]
-                if 'created_by' not in columns:
-                    db.execute("ALTER TABLE tasks ADD COLUMN created_by INTEGER REFERENCES users (id) ON DELETE SET NULL;")
-                    db.commit()
-            except Exception:
-                pass
-            
-            # Auto-seed initial records if users table is empty
-            cursor = db.execute('SELECT COUNT(*) as count FROM users;')
-            user_count = cursor.fetchone()['count']
-            
-            if user_count == 0:
-                seed_initial_data(db)
-    except Exception as err:
-        print(f"Warning: Database initialization exception caught: {err}")
+def _do_init_db():
+    db = get_db()
+    
+    db.executescript("""
+    CREATE TABLE IF NOT EXISTS departments (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT UNIQUE NOT NULL,
+        description TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
 
-def seed_initial_data(db):
-    """Seed default administrative credentials, sample employee accounts, and initial tasks."""
-    # Password hashes
-    admin_pw = generate_password_hash('admin123').decode('utf-8')
-    emp_pw = generate_password_hash('emp123').decode('utf-8')
-    
-    # 1. Admin account
-    db.execute('''
-        INSERT INTO users (username, password_hash, role, full_name, email, phone, salary, payslip_status, is_active)
-        VALUES (?, ?, 'admin', ?, ?, ?, ?, 'Paid', 1)
-    ''', (
-        'admin',
-        admin_pw,
-        'Executive Administrator',
-        'admin@enterprise.internal',
-        '+1 (555) 019-2834',
-        135000.00
-    ))
-    admin_id = db.execute('SELECT last_insert_rowid()').fetchone()[0]
-    
-    # 2. Sample Employees
-    db.execute('''
-        INSERT INTO users (username, password_hash, role, full_name, email, phone, salary, payslip_status, is_active)
-        VALUES (?, ?, 'employee', ?, ?, ?, ?, 'Paid', 1)
-    ''', (
-        'sarah.jenkins',
-        emp_pw,
-        'Sarah Jenkins',
-        'sarah.j@enterprise.internal',
-        '+1 (555) 234-5678',
-        84000.00
-    ))
-    sarah_id = db.execute('SELECT last_insert_rowid()').fetchone()[0]
-    
-    db.execute('''
-        INSERT INTO users (username, password_hash, role, full_name, email, phone, salary, payslip_status, is_active)
-        VALUES (?, ?, 'employee', ?, ?, ?, ?, 'Unpaid', 1)
-    ''', (
-        'marcus.chen',
-        emp_pw,
-        'Marcus Chen',
-        'marcus.c@enterprise.internal',
-        '+1 (555) 876-5432',
-        92500.00
-    ))
-    marcus_id = db.execute('SELECT last_insert_rowid()').fetchone()[0]
-    
-    # 3. Sample Tasks
-    db.execute('''
-        INSERT INTO tasks (employee_id, created_by, task_title, description, priority, status, assigned_date, due_date)
-        VALUES (?, ?, ?, ?, 'High', 'Completed', DATE('now', '-4 days'), DATE('now', '+2 days'))
-    ''', (
-        sarah_id,
-        admin_id,
-        'Deploy Infrastructure to AWS EU Cluster',
-        'Configure ECS tasks, provision application load balancers, and setup Route53 health checks.'
-    ))
-    
-    db.execute('''
-        INSERT INTO tasks (employee_id, created_by, task_title, description, priority, status, assigned_date, due_date)
-        VALUES (?, ?, ?, ?, 'Urgent', 'Ongoing', DATE('now', '-2 days'), DATE('now', '+3 days'))
-    ''', (
-        sarah_id,
-        admin_id,
-        'Implement OAuth2 Token Refresh Flow',
-        'Update frontend API client interceptor to handle transparent 401 token renewals and backoff retries.'
-    ))
-    
-    db.execute('''
-        INSERT INTO tasks (employee_id, created_by, task_title, description, priority, status, assigned_date, due_date)
-        VALUES (?, ?, ?, ?, 'Medium', 'Pending', DATE('now', '-1 days'), DATE('now', '+5 days'))
-    ''', (
-        marcus_id,
-        admin_id,
-        'Security Audit & Dependency Upgrades',
-        'Run vulnerability scans across all Python and JavaScript modules, resolve CVE alerts and test regressions.'
-    ))
-    
+    CREATE TABLE IF NOT EXISTS users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        username TEXT UNIQUE NOT NULL,
+        email TEXT UNIQUE NOT NULL,
+        password_hash TEXT NOT NULL,
+        role TEXT CHECK(role IN ('admin', 'employee')) NOT NULL DEFAULT 'employee',
+        full_name TEXT,
+        phone TEXT,
+        salary REAL DEFAULT 0.0,
+        payslip_status TEXT DEFAULT 'Paid',
+        is_active INTEGER NOT NULL DEFAULT 1,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS employees (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER UNIQUE NOT NULL,
+        department_id INTEGER NOT NULL,
+        full_name TEXT NOT NULL,
+        designation TEXT NOT NULL,
+        salary REAL NOT NULL DEFAULT 0.0,
+        phone TEXT,
+        joining_date DATE NOT NULL,
+        status TEXT CHECK(status IN ('Active', 'On Leave', 'Terminated')) NOT NULL DEFAULT 'Active',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
+        FOREIGN KEY (department_id) REFERENCES departments (id) ON DELETE RESTRICT
+    );
+
+    CREATE TABLE IF NOT EXISTS tasks (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        title TEXT,
+        task_title TEXT,
+        description TEXT,
+        assigned_to INTEGER,
+        employee_id INTEGER,
+        created_by INTEGER NOT NULL DEFAULT 1,
+        priority TEXT CHECK(priority IN ('Low', 'Medium', 'High', 'Urgent', 'Critical')) NOT NULL DEFAULT 'Medium',
+        status TEXT CHECK(status IN ('Pending', 'Ongoing', 'In Progress', 'Completed', 'Blocked')) NOT NULL DEFAULT 'Pending',
+        assigned_date DATE DEFAULT (DATE('now')),
+        due_date DATE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (assigned_to) REFERENCES users (id) ON DELETE CASCADE,
+        FOREIGN KEY (employee_id) REFERENCES users (id) ON DELETE CASCADE,
+        FOREIGN KEY (created_by) REFERENCES users (id) ON DELETE RESTRICT
+    );
+
+    CREATE TABLE IF NOT EXISTS task_logs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        task_id INTEGER NOT NULL,
+        user_id INTEGER NOT NULL,
+        old_status TEXT NOT NULL,
+        new_status TEXT NOT NULL,
+        comment TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (task_id) REFERENCES tasks (id) ON DELETE CASCADE,
+        FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+    );
+    """)
+    db.commit()
+    seed_data(db)
+
+def seed_data(db):
+    cursor = db.cursor()
+    cursor.execute("SELECT COUNT(*) FROM users")
+    if cursor.fetchone()[0] > 0:
+        return
+
+    departments = [
+        ("Engineering", "Software Architecture, Platform Infrastructure, and Quality Engineering"),
+        ("Product & Design", "Product Strategy, UX/UI Design, and Systems Management"),
+        ("Operations", "DevOps, Corporate Infrastructure, and Security Compliance"),
+        ("Human Resources", "Talent Acquisition, People Operations, and Compliance")
+    ]
+    cursor.executemany("INSERT INTO departments (name, description) VALUES (?, ?)", departments)
+
+    admin_pw = generate_password_hash("Admin@12345")
+    emp_pw = generate_password_hash("Employee@12345")
+
+    cursor.execute(
+        "INSERT INTO users (username, email, password_hash, role, full_name, phone, salary, payslip_status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+        ("admin", "admin@enterprise.internal", admin_pw, "admin", "Executive Administrator", "+1-555-0100", 135000.0, "Paid")
+    )
+    admin_id = cursor.lastrowid
+
+    employees_data = [
+        ("alex.chen", "alex.chen@enterprise.internal", "Alex Chen", 1, "Lead Systems Architect", 145000.0, "+1-555-0101", "2023-01-15"),
+        ("sarah.jenkins", "sarah.jenkins@enterprise.internal", "Sarah Jenkins", 2, "Senior Product Designer", 120000.0, "+1-555-0102", "2023-03-01"),
+        ("marcus.vance", "marcus.vance@enterprise.internal", "Marcus Vance", 3, "DevOps & Infrastructure Lead", 132000.0, "+1-555-0103", "2023-06-10")
+    ]
+
+    for username, email, full_name, dept_id, designation, salary, phone, joining_date in employees_data:
+        cursor.execute(
+            "INSERT INTO users (username, email, password_hash, role, full_name, phone, salary, payslip_status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            (username, email, emp_pw, "employee", full_name, phone, salary, "Paid")
+        )
+        u_id = cursor.lastrowid
+        cursor.execute(
+            """INSERT INTO employees (user_id, department_id, full_name, designation, salary, phone, joining_date, status)
+               VALUES (?, ?, ?, ?, ?, ?, ?, 'Active')""",
+            (u_id, dept_id, full_name, designation, salary, phone, joining_date)
+        )
+
     db.commit()

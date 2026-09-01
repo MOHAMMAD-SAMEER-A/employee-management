@@ -9,6 +9,9 @@ from app.routes.employee_routes import employee_bp
 def create_app(config_class=Config):
     """Application factory for Employee Management & Task Allocation Web Application."""
     app = Flask(__name__)
+    if isinstance(config_class, str):
+        from app.config import config_by_name
+        config_class = config_by_name.get(config_class, Config)
     app.config.from_object(config_class)
 
     # Safely ensure instance folder exists if writable

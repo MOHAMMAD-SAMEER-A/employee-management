@@ -34,7 +34,7 @@ class EnterpriseAppTestCase(unittest.TestCase):
         """Test default seeding and admin authentication."""
         res = self.client.post('/api/auth/login', json={
             'username': 'admin',
-            'password': 'admin123'
+            'password': 'Admin@12345'
         })
         self.assertEqual(res.status_code, 200)
         data = res.get_json()
@@ -45,7 +45,7 @@ class EnterpriseAppTestCase(unittest.TestCase):
         """Test seeded employee authentication."""
         res = self.client.post('/api/auth/login', json={
             'username': 'sarah.jenkins',
-            'password': 'emp123'
+            'password': 'Employee@12345'
         })
         self.assertEqual(res.status_code, 200)
         data = res.get_json()
@@ -69,22 +69,22 @@ class EnterpriseAppTestCase(unittest.TestCase):
         self.assertEqual(unauth_res.status_code, 401)
 
         # 2. Employee access (should be 403)
-        self.client.post('/api/auth/login', json={'username': 'sarah.jenkins', 'password': 'emp123'})
+        self.client.post('/api/auth/login', json={'username': 'sarah.jenkins', 'password': 'Employee@12345'})
         emp_res = self.client.get('/api/admin/metrics')
         self.assertEqual(emp_res.status_code, 403)
 
         # 3. Admin access
-        self.client.post('/api/auth/login', json={'username': 'admin', 'password': 'admin123'})
+        self.client.post('/api/auth/login', json={'username': 'admin', 'password': 'Admin@12345'})
         admin_res = self.client.get('/api/admin/metrics')
         self.assertEqual(admin_res.status_code, 200)
         data = admin_res.get_json()
         self.assertTrue(data['success'])
-        self.assertEqual(data['data']['active_staff'], 2)
+        self.assertEqual(data['data']['active_staff'], 3)
         self.assertGreater(data['data']['total_payroll'], 0)
 
     def test_05_admin_employee_creation_and_payroll_toggle(self):
         """Test creating an employee and toggling their payroll status."""
-        self.client.post('/api/auth/login', json={'username': 'admin', 'password': 'admin123'})
+        self.client.post('/api/auth/login', json={'username': 'admin', 'password': 'Admin@12345'})
         
         # Create new staff member
         create_res = self.client.post('/api/admin/employees/create', json={
@@ -107,9 +107,9 @@ class EnterpriseAppTestCase(unittest.TestCase):
     @patch('app.routes.admin_routes.notify_task_dispatched')
     def test_06_task_creation_with_email_notification(self, mock_notify):
         """Test task dispatch by admin triggers async task assignment email."""
-        self.client.post('/api/auth/login', json={'username': 'admin', 'password': 'admin123'})
+        self.client.post('/api/auth/login', json={'username': 'admin', 'password': 'Admin@12345'})
         task_res = self.client.post('/api/admin/tasks/create', json={
-            'employee_id': 2, # Sarah Jenkins
+            'employee_id': 3, # Sarah Jenkins
             'task_title': 'Load Balancer SSL Rotation',
             'description': 'Update wild-card SSL certificates before expiration.',
             'priority': 'Urgent',
@@ -119,7 +119,7 @@ class EnterpriseAppTestCase(unittest.TestCase):
         
         # Verify notify_task_dispatched was invoked with correct parameters
         mock_notify.assert_called_once_with(
-            recipient_email='sarah.j@enterprise.internal',
+            recipient_email='sarah.jenkins@enterprise.internal',
             assignee_name='Sarah Jenkins',
             title='Load Balancer SSL Rotation',
             priority='Urgent',
@@ -130,9 +130,9 @@ class EnterpriseAppTestCase(unittest.TestCase):
     def test_07_task_status_transition_and_blocker_escalation(self, mock_notify_blocked):
         """Test employee status transitions and blocker escalation alert email."""
         # 1. Admin creates task
-        self.client.post('/api/auth/login', json={'username': 'admin', 'password': 'admin123'})
+        self.client.post('/api/auth/login', json={'username': 'admin', 'password': 'Admin@12345'})
         task_res = self.client.post('/api/admin/tasks/create', json={
-            'employee_id': 2, # Sarah Jenkins
+            'employee_id': 3, # Sarah Jenkins
             'task_title': 'Database Sharding Pipeline',
             'description': 'Configure hash partitioning for customer records.',
             'priority': 'High',
@@ -141,7 +141,7 @@ class EnterpriseAppTestCase(unittest.TestCase):
         task_id = task_res.get_json()['data']['id']
 
         # 2. Employee Sarah logs in
-        self.client.post('/api/auth/login', json={'username': 'sarah.jenkins', 'password': 'emp123'})
+        self.client.post('/api/auth/login', json={'username': 'sarah.jenkins', 'password': 'Employee@12345'})
         
         # Update to Ongoing
         update_res = self.client.patch(f'/api/employee/tasks/{task_id}/status', json={
@@ -169,9 +169,19 @@ class EnterpriseAppTestCase(unittest.TestCase):
 
     def test_08_employee_cross_tenant_isolation(self):
         """Test that an employee cannot mutate tasks assigned to another employee."""
-        self.client.post('/api/auth/login', json={'username': 'marcus.chen', 'password': 'emp123'})
+        # 1. Admin creates task for Sarah (ID 3)
+        self.client.post('/api/auth/login', json={'username': 'admin', 'password': 'Admin@12345'})
+        task_res = self.client.post('/api/admin/tasks/create', json={
+            'employee_id': 3,
+            'task_title': 'Isolated Task',
+            'priority': 'Low'
+        })
+        task_id = task_res.get_json()['data']['id']
+
+        # 2. Marcus (ID 4) attempts to tamper with Sarah's task
+        self.client.post('/api/auth/login', json={'username': 'marcus.vance', 'password': 'Employee@12345'})
         
-        tamper_res = self.client.patch('/api/employee/tasks/1/status', json={
+        tamper_res = self.client.patch(f'/api/employee/tasks/{task_id}/status', json={
             'status': 'Completed'
         })
         self.assertEqual(tamper_res.status_code, 403)

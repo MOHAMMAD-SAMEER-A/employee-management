@@ -1,5 +1,5 @@
 from flask import Blueprint, render_template, request, jsonify, session
-from flask_bcrypt import generate_password_hash
+from werkzeug.security import generate_password_hash
 from app.database import get_db
 from app.decorators import admin_required
 from app.services.email_service import notify_task_dispatched
@@ -151,7 +151,9 @@ def create_employee():
             'data': None
         }), 409
 
-    password_hash = generate_password_hash(password).decode('utf-8')
+    password_hash = generate_password_hash(password)
+    if isinstance(password_hash, bytes):
+        password_hash = password_hash.decode('utf-8')
     
     cursor = db.execute('''
         INSERT INTO users (username, password_hash, role, full_name, email, phone, salary, payslip_status, is_active)

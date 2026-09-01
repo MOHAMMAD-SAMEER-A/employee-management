@@ -5,10 +5,9 @@ description = "Employee Management and Task Allocation Web Application"
 requires-python = ">=3.10"
 dependencies = [
     "Flask==3.0.3",
-    "Flask-Bcrypt==1.0.1",
-    "python-dotenv==1.0.1",
-    "bcrypt>=4.0.0"
+    "Werkzeug==3.0.3",
+    "python-dotenv==1.0.1"
 ]
 
 [tool.vercel]
-entrypoint = "index.py"
+entrypoint = "api/index.py"
